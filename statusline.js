@@ -142,6 +142,9 @@ function main() {
   const d = dur(j.cost?.total_duration_ms);
   const tok = totalTokens(cw);
   const csz = ctxSize(cw);
+  const usedPct = 100 - remaining;
+  const ctxUsed = Math.round((cw.context_window_size || 200000) * usedPct / 100);
+  const curTok = totalTokens({ total_input_tokens: ctxUsed, total_output_tokens: 0 });
   const git = gitStatus(j.cwd || process.cwd());
 
   const plan = planUsage();
@@ -149,7 +152,7 @@ function main() {
   const parts = [
     `${FG}${cwd}${R} ${git}`,
     `${DIM}${model}(${csz})${R}`,
-    `${DIM}ctx ${R}${pc(100 - remaining)}${tok}/${csz}${R}`,
+    `${DIM}ctx ${R}${pc(100 - remaining)}${curTok}/${csz}${R}`,
     plan,
     `${DIM}${u}@${h}${R}`,
   ].filter(Boolean);
