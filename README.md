@@ -1,6 +1,6 @@
 # tmux-headline
 
-Claude Code plugin that shows session headlines and an animated spinner in your tmux status bar.
+Claude Code plugin that shows session headlines, animated spinner, and subscription usage in your tmux status bar and Claude statusline.
 
 Instead of every window showing `claude`, you see what each session is actually working on:
 
@@ -59,12 +59,13 @@ Four hooks working together:
 |------|-------------|
 | **SessionStart** | Registers session ID → tmux pane/window mapping in `state.json` |
 | **UserPromptSubmit** | Injects a system reminder asking Claude to write a short headline |
-| **Stop** | Syncs headline files to tmux `@headline`/`@pane_headline` options; re-appends `custom-title` to session `.jsonl` so `/resume` shows the headline |
+| **Stop** | Syncs headlines to tmux options; re-appends `custom-title` to `.jsonl`; polls subscription usage in background |
 | **SessionEnd** | Cleans up state and headline files |
 
 Runtime state lives in `~/.claude/headline/`:
 - `state.json` — session → tmux pane mapping
 - `headlines/<session-id>.headline` — plain text headline per session
+- `usage.json` — cached subscription usage (5h/7d limits + reset times)
 
 ## Spinner styles
 
@@ -80,6 +81,37 @@ Set `HEADLINE_SPINNER` env var to switch:
 ```sh
 export HEADLINE_SPINNER=claude
 ```
+
+## Subscription usage polling
+
+Shows your 5-hour and 7-day usage limits in Claude's statusline:
+
+```
+14%⏳2h10 · 44%⏳Thu 23:00
+```
+
+- First number: 5-hour rolling window usage with relative reset time
+- Second number: 7-day weekly quota usage with reset day + local time
+- Color-coded: green → yellow → red as usage increases
+
+### How it works
+
+Sends a minimal Haiku API call (~9 tokens) with the `oauth-2025-04-20` beta header to read `anthropic-ratelimit-unified-*` response headers. Results cached to `~/.claude/headline/usage.json`, polled at most once per 60 seconds via the Stop hook.
+
+### Statusline setup
+
+Copy `statusline.js` to `~/.claude/` and add to `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "node \"$HOME/.claude/statusline.js\""
+  }
+}
+```
+
+The statusline also shows git status (branch, staged, modified, untracked, ahead/behind, worktree detection) and context window usage.
 
 ## Session naming
 
