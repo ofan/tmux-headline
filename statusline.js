@@ -39,15 +39,33 @@ function ctxSize(cw) {
   return Math.round(sz / 1e3) + 'k';
 }
 
+function resetTime(epoch, short) {
+  const diff = epoch - Date.now() / 1000;
+  if (diff <= 0) return 'now';
+  if (short) {
+    const m = Math.floor(diff / 60);
+    if (m < 60) return m + 'm';
+    const h = Math.floor(m / 60), rm = m % 60;
+    return h + 'h' + (rm ? String(rm).padStart(2, '0') : '');
+  }
+  // Show day + time in local TZ
+  const d = new Date(epoch * 1000);
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${days[d.getDay()]} ${hh}:${mm}`;
+}
+
 function planUsage() {
   try {
     const f = os.homedir() + '/.claude/headline/usage.json';
     const data = JSON.parse(fs.readFileSync(f, 'utf8'));
-    // Stale if > 5 min
-    if (Date.now() / 1000 - data.ts > 300) return '';
-    const h5 = Math.round((1 - data['5h']) * 100);
-    const d7 = Math.round((1 - data['7d']) * 100);
-    return `${DIM}5h ${pc(100 - h5)}${h5}%${R}${DIM} · 7d ${pc(100 - d7)}${d7}%${R}`;
+    if (Date.now() / 1000 - data.ts > 600) return '';
+    const h5 = Math.round(data['5h'] * 100);
+    const d7 = Math.round(data['7d'] * 100);
+    const h5r = resetTime(data['5h_reset'], true);
+    const d7r = resetTime(data['7d_reset'], false);
+    return `${pc(h5)}${h5}%${R}${DIM}⏳${h5r} · ${R}${pc(d7)}${d7}%${R}${DIM}⏳${d7r}${R}`;
   } catch { return ''; }
 }
 
@@ -109,7 +127,7 @@ function main() {
   const parts = [
     `${FG}${cwd}${R} ${git}`,
     `${DIM}${model}(${csz})${R}`,
-    `${DIM}⇅ ${tok} (${R}${pc(100 - remaining)}${remaining}% left${R}${DIM})${R}`,
+    `${DIM}ctx ${R}${pc(100 - remaining)}${tok}/${csz}${R}`,
     plan,
     `${DIM}${u}@${h}${R}`,
   ].filter(Boolean);
