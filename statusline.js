@@ -39,8 +39,17 @@ function ctxSize(cw) {
   return Math.round(sz / 1e3) + 'k';
 }
 
-// NOTE: /oauth/usage API disabled by Anthropic as of Feb 2026
-// Usage limits (5h/7d) not available via API — only via /usage command
+function planUsage() {
+  try {
+    const f = os.homedir() + '/.claude/headline/usage.json';
+    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    // Stale if > 5 min
+    if (Date.now() / 1000 - data.ts > 300) return '';
+    const h5 = Math.round((1 - data['5h']) * 100);
+    const d7 = Math.round((1 - data['7d']) * 100);
+    return `${DIM}5h ${pc(100 - h5)}${h5}%${R}${DIM} · 7d ${pc(100 - d7)}${d7}%${R}`;
+  } catch { return ''; }
+}
 
 function gitStatus(cwd) {
   try {
@@ -95,12 +104,15 @@ function main() {
   const csz = ctxSize(cw);
   const git = gitStatus(j.cwd || process.cwd());
 
+  const plan = planUsage();
+
   const parts = [
     `${FG}${cwd}${R} ${git}`,
     `${DIM}${model}(${csz})${R}`,
     `${DIM}⇅ ${tok} (${R}${pc(100 - remaining)}${remaining}% left${R}${DIM})${R}`,
+    plan,
     `${DIM}${u}@${h}${R}`,
-  ];
+  ].filter(Boolean);
 
   process.stdout.write(parts.join(`${DIM} · ${R}`));
 }

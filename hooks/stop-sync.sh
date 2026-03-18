@@ -8,6 +8,9 @@ TRANSCRIPT=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.st
 # Sync tmux options
 "${CLAUDE_PLUGIN_ROOT}/scripts/headline-sync.sh"
 
+# Poll subscription usage (runs in background, skips if < 60s since last poll)
+"${CLAUDE_PLUGIN_ROOT}/scripts/usage-poll.sh" &
+
 # Write headline as Claude session name (custom-title)
 if [ -n "$SESSION_ID" ] && [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   HEADLINE_FILE="$HOME/.claude/headline/headlines/${SESSION_ID}.headline"
