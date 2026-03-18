@@ -60,12 +60,34 @@ function planUsage() {
   try {
     const f = os.homedir() + '/.claude/headline/usage.json';
     const data = JSON.parse(fs.readFileSync(f, 'utf8'));
-    if (Date.now() / 1000 - data.ts > 600) return '';
+    if (Date.now() / 1000 - data.ts > 3600) return '';
     const h5 = Math.round(data['5h'] * 100);
     const d7 = Math.round(data['7d'] * 100);
     const h5r = resetTime(data['5h_reset'], true);
     const d7r = resetTime(data['7d_reset'], false);
-    return `${pc(h5)}${h5}%${R}${DIM}⏳${h5r} · ${R}${pc(d7)}${d7}%${R}${DIM}⏳${d7r}${R}`;
+    // Colors: filled bar + label = usage-colored (green/yellow/red)
+    //         empty bar = dim grey, reset time = dim
+    const BSTYLE = process.env.HEADLINE_BAR_STYLE || 'solid';
+    const bar = (pct, w) => {
+      const label = `${pct}%`;
+      const filled = Math.round(pct / 100 * w);
+      const pad = Math.max(0, Math.floor((w - label.length) / 2));
+      const [fc, ec] = BSTYLE === 'ascii' ? ['=', '-'] : ['█', '░'];
+      let inner = fc.repeat(filled) + ec.repeat(w - filled);
+      inner = inner.slice(0, pad) + label + inner.slice(pad + label.length);
+      let out = '';
+      for (let i = 0; i < inner.length; i++) {
+        const ch = inner[i];
+        const inFilled = i < filled;
+        if (ch === fc || ch === ec) {
+          out += `${inFilled ? pc(pct) : DIM}${ch}${R}`;
+        } else {
+          out += `${pc(pct)}${ch}${R}`;
+        }
+      }
+      return out;
+    };
+    return `${bar(h5, 10)} ${DIM}${h5r}${R} ${DIM}· ${R}${bar(d7, 10)} ${DIM}${d7r}${R}`;
   } catch { return ''; }
 }
 
