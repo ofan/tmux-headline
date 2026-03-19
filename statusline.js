@@ -59,7 +59,14 @@ function resetTime(epoch, short) {
 function planUsage() {
   try {
     const f = os.homedir() + '/.claude/headline/usage.json';
-    const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+    const pollScript = os.homedir() + '/.claude/plugins/local/tmux-headline/scripts/usage-poll.sh';
+    let data;
+    try { data = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { data = null; }
+    // Auto-poll if missing or stale (> 120s)
+    if (!data || Date.now() / 1000 - data.ts > 120) {
+      try { execFileSync('bash', [pollScript], { timeout: 10000, stdio: 'ignore' }); } catch {}
+      try { data = JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return ''; }
+    }
     if (Date.now() / 1000 - data.ts > 3600) return '';
     const h5 = Math.round(data['5h'] * 100);
     const d7 = Math.round(data['7d'] * 100);
